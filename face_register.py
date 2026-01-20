@@ -91,7 +91,7 @@ async def register_face(
         "admissionNo": admission_no,
         "authUid": auth_uid,
         "vector": face_vector,  # <--- The Mathematical Representation of the Face
-        "updatedAt": firestore.SERVER_TIMESTAMP # <--- Better than datetime.now()
+        "updatedAt": firestore.SERVER_TIMESTAMP 
     })
 
     # --------------------------------------------------
