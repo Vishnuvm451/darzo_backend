@@ -1,25 +1,18 @@
-from fastapi import APIRouter, UploadFile, File
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 import numpy as np
 import cv2
-
-from face_utils import (
-    load_known_faces,
-    extract_face_encoding,
-    compare_faces
-)
+from face_utils import extract_face_encoding, verify_user_face
 
 router = APIRouter(tags=["Face Verification"])
 
-# ❌ REMOVED: Global loading. We will load inside the function to get fresh data.
-# known_encodings, known_admissions = load_known_faces()
-
-
 @router.post("/verify")
-async def verify_face(image: UploadFile = File(...)):
+async def verify_face(
+    admission_no: str = Form(...), # ✅ Now receives admission_no from Flutter
+    image: UploadFile = File(...)
+):
     """
-    Verifies face and returns admission number if matched
+    Verifies a specific student's face using 1:1 matching.
     """
-
     try:
         # --------------------------------------------------
         # 1. READ IMAGE
@@ -31,58 +24,45 @@ async def verify_face(image: UploadFile = File(...)):
         if img is None:
             return {
                 "success": False,
-                "message": "Invalid image"
+                "message": "Invalid image format"
             }
 
         # --------------------------------------------------
-        # 2. FACE ENCODING
+        # 2. EXTRACT ENCODING (THE "QUERY" FACE)
         # --------------------------------------------------
+        # This converts the photo into a 128-d vector
         encoding = extract_face_encoding(img)
 
         if encoding is None:
             return {
                 "success": False,
-                "message": "No face detected or multiple faces"
+                "message": "No face detected or image too blurry"
             }
 
         # --------------------------------------------------
-        # 3. RELOAD KNOWN FACES (Fix for New Registrations)
+        # 3. 1:1 VERIFICATION (THE "BRAIN" STEP)
         # --------------------------------------------------
-        # ✅ FIX: Load faces here so we always have the latest data
-        known_encodings, known_admissions = load_known_faces()
+        # This function fetches the vector from Firestore and compares it
+        success, message = verify_user_face(admission_no, encoding)
 
-        if not known_encodings:
-             return {
-                "success": False,
-                "message": "No registered faces found in system"
-            }
-
-        # --------------------------------------------------
-        # 4. FACE COMPARISON
-        # --------------------------------------------------
-        match = compare_faces(
-            encoding,
-            known_encodings,
-            known_admissions
-        )
-
-        if match is None:
+        if not success:
             return {
                 "success": False,
-                "message": "Face not recognized"
+                "message": message
             }
 
         # --------------------------------------------------
-        # 5. SUCCESS
+        # 4. SUCCESS
         # --------------------------------------------------
         return {
             "success": True,
-            "admissionNo": match
+            "admissionNo": admission_no,
+            "message": "Face verified successfully"
         }
 
     except Exception as e:
-        print("FACE VERIFY ERROR:", e)
+        print(f"CRITICAL ERROR IN /VERIFY: {e}")
         return {
             "success": False,
-            "message": "Verification failed"
+            "message": "Internal server error during verification"
         }
