@@ -1,12 +1,10 @@
 import firebase_admin
 from firebase_admin import credentials, firestore
-# ❌ REMOVED: from firebase_admin import storage
 
 # -------------------------------------------------
-# GLOBAL OBJECTS
+# GLOBAL DB OBJECT
 # -------------------------------------------------
 db = None
-# ❌ REMOVED: bucket = None
 
 # -------------------------------------------------
 # INIT FIREBASE (RUN ONCE)
@@ -14,28 +12,33 @@ db = None
 def init_firebase():
     global db
 
+    # Prevent re-initialization error
     if firebase_admin._apps:
-        return  # Already initialized
+        if db is None:
+            db = firestore.client()
+        return
 
-    # 🔐 Service account key (same folder as app.py)
-    cred = credentials.Certificate("serviceAccountKey.json")
+    try:
+        # Service account key must be in the same folder as app.py
+        cred = credentials.Certificate("serviceAccountKey.json")
 
-    # ✅ Initialize ONLY with Credential (No Storage Bucket)
-    firebase_admin.initialize_app(cred)
+        # Initialize Firebase with the service account
+        firebase_admin.initialize_app(cred)
 
-    db = firestore.client()
-    
-    # ❌ REMOVED: bucket = storage.bucket()
-
-    print("✅ Firebase initialized successfully (Firestore Only)")
-
+        # Initialize Firestore Client
+        db = firestore.client()
+        
+        print("✅ Firebase initialized successfully (Firestore Client Active)")
+    except Exception as e:
+        print(f"❌ Critical Error during Firebase Init: {e}")
+        raise e
 
 # -------------------------------------------------
-# SAFE ACCESSORS
+# SAFE ACCESSOR
 # -------------------------------------------------
 def get_db():
+    global db
     if db is None:
-        raise RuntimeError("❌ Firestore not initialized. Call init_firebase() first.")
+        # Auto-initialize if someone forgot to call init_firebase()
+        init_firebase()
     return db
-
-# ❌ REMOVED: get_bucket() function
