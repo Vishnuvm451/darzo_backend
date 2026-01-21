@@ -11,10 +11,12 @@ from face_verify import router as face_verify_router
 # -------------------------------------------------
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: Initialize Firebase once
+    # Startup
     init_firebase()
+    print("🔥 Firebase initialized")
     yield
-    # Shutdown logic (optional)
+    # Shutdown (optional cleanup)
+    print("🛑 API shutting down")
 
 # -------------------------------------------------
 # APP INIT
@@ -22,16 +24,16 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="DARZO Face Recognition API",
     description="Backend for Flutter Smart Attendance System",
-    version="1.1.0",
-    lifespan=lifespan,
+    version="1.2.0",
+    lifespan=lifespan
 )
 
 # -------------------------------------------------
-# CORS (ALLOW FLUTTER APP)
+# CORS
 # -------------------------------------------------
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # tighten in production
+    allow_origins=["*"],  # tighten later for production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -40,9 +42,6 @@ app.add_middleware(
 # -------------------------------------------------
 # ROUTES
 # -------------------------------------------------
-# Creates:
-# POST /face/register
-# POST /face/verify
 app.include_router(face_register_router, prefix="/face")
 app.include_router(face_verify_router, prefix="/face")
 
@@ -54,7 +53,7 @@ def root():
     return {
         "status": "online",
         "service": "DARZO Biometric API",
-        "version": "1.1.0",
+        "version": "1.2.0"
     }
 
 # -------------------------------------------------
@@ -64,5 +63,5 @@ def root():
 def health():
     return {
         "status": "ok",
-        "service": "DARZO Biometric API",
+        "message": "API is healthy"
     }
