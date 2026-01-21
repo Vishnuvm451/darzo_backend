@@ -7,14 +7,14 @@ from face_register import router as face_register_router
 from face_verify import router as face_verify_router
 
 # -------------------------------------------------
-# LIFESPAN (STARTUP/SHUTDOWN)
+# LIFESPAN (STARTUP / SHUTDOWN)
 # -------------------------------------------------
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: Initialize Firebase
+    # Startup: Initialize Firebase once
     init_firebase()
     yield
-    # Shutdown logic (if any) goes here
+    # Shutdown logic (optional)
 
 # -------------------------------------------------
 # APP INIT
@@ -23,7 +23,7 @@ app = FastAPI(
     title="DARZO Face Recognition API",
     description="Backend for Flutter Smart Attendance System",
     version="1.1.0",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 # -------------------------------------------------
@@ -31,7 +31,7 @@ app = FastAPI(
 # -------------------------------------------------
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],   # For production, replace with your actual Flutter web URL
+    allow_origins=["*"],  # tighten in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -40,19 +40,29 @@ app.add_middleware(
 # -------------------------------------------------
 # ROUTES
 # -------------------------------------------------
-# This creates:
-# 1. POST /face/register
-# 2. POST /face/verify
+# Creates:
+# POST /face/register
+# POST /face/verify
 app.include_router(face_register_router, prefix="/face")
 app.include_router(face_verify_router, prefix="/face")
 
 # -------------------------------------------------
-# ROOT & HEALTH CHECK
+# ROOT
 # -------------------------------------------------
 @app.get("/", tags=["Health"])
 def root():
     return {
         "status": "online",
         "service": "DARZO Biometric API",
-        "version": "1.1.0"
+        "version": "1.1.0",
+    }
+
+# -------------------------------------------------
+# HEALTH CHECK (IMPORTANT FOR RENDER + FLUTTER)
+# -------------------------------------------------
+@app.get("/health", tags=["Health"])
+def health():
+    return {
+        "status": "ok",
+        "service": "DARZO Biometric API",
     }
