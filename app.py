@@ -53,7 +53,7 @@ app.include_router(face_verify_router, prefix="/face")
 def root():
     return {
         "status": "online",
-        "service": "DARZO Biometric API",
+        "service": "DARZO Biometric API 2.0 workin",
         "version": "1.2.0"
     }
 
@@ -64,5 +64,5 @@ def root():
 def health():
     return {
         "status": "ok",
-        "message": "API is healthy"
+        "message": "API is good healthy"
     }
