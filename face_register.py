@@ -73,6 +73,8 @@ async def register_face(
     # 2. READ IMAGE
     # -------------------------------------------------
     contents = await image.read()
+    print("📸 IMAGE SIZE:", len(contents))
+
 
     if not contents:
         raise HTTPException(status_code=400, detail="Empty image file")
