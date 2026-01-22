@@ -17,6 +17,7 @@ async def lifespan(app: FastAPI):
     yield
     # Shutdown (optional cleanup)
     print("🛑 API shutting down")
+print("🔥🔥🔥 RUNNING NEW BACKEND CODE v1.2.0 🔥🔥🔥")
 
 # -------------------------------------------------
 # APP INIT
@@ -53,8 +54,8 @@ app.include_router(face_verify_router, prefix="/face")
 def root():
     return {
         "status": "online",
-        "service": "DARZO Biometric API 2.0 workin",
-        "version": "1.2.0"
+        "service": "DARZO Biometric API 2",
+        "version": "1.2.0 - new"
     }
 
 # -------------------------------------------------
@@ -64,5 +65,5 @@ def root():
 def health():
     return {
         "status": "ok",
-        "message": "API is good healthy"
+        "message": "API is healthy"
     }

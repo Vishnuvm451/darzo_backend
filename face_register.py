@@ -50,6 +50,8 @@ async def register_face(
     auth_uid: str = Form(...),
     image: UploadFile = File(...)
 ):
+    print("🔥 /face/register CALLED")
+    print("🔥 Writing face vector for", admission_no)
     db = get_db()
 
     # -------------------------------------------------
