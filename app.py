@@ -48,6 +48,7 @@ app.include_router(face_verify_router, prefix="/face")
 # -------------------------------------------------
 # ROOT
 # -------------------------------------------------
+#test
 @app.get("/", tags=["Health"])
 def root():
     return {
