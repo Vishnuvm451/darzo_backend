@@ -12,34 +12,40 @@ router = APIRouter(tags=["Face Registration"])
 MAX_IMAGE_SIZE = 2 * 1024 * 1024  # 2MB
 
 # -------------------------------------------------
-# HEAVY ML WORK (RUNS IN THREAD)
+# FACE VECTOR EXTRACTION (MOBILE-SAFE)
 # -------------------------------------------------
 def extract_face_vector(rgb_img):
-    boxes = face_recognition.face_locations(rgb_img, model="hog")
+    try:
+        boxes = face_recognition.face_locations(rgb_img, model="hog")
+        print("🧠 FACE BOXES:", boxes)
 
-    if len(boxes) == 0:
-        raise ValueError("No face detected")
+        if not boxes:
+            return None  # ❗ DO NOT CRASH
 
-    if len(boxes) > 1:
-        raise ValueError("Multiple faces detected")
+        encodings = face_recognition.face_encodings(
+            rgb_img,
+            known_face_locations=boxes
+        )
 
-    top, right, bottom, left = boxes[0]
+        if not encodings:
+            return None
 
-    if (bottom - top) < 80 or (right - left) < 80:
-        raise ValueError("Face too far from camera")
+        embedding = encodings[0]
 
-    encodings = face_recognition.face_encodings(
-        rgb_img,
-        known_face_locations=boxes
-    )
+        # Normalize (IMPORTANT)
+        norm = np.linalg.norm(embedding)
+        if norm == 0:
+            return None
 
-    if not encodings:
-        raise ValueError("Face encoding failed")
+        embedding = embedding / norm
+        print("🧠 VECTOR GENERATED")
 
-    embedding = encodings[0]
-    embedding = embedding / np.linalg.norm(embedding)
+        return embedding.tolist()
 
-    return embedding.tolist()
+    except Exception as e:
+        print("❌ VECTOR EXTRACTION ERROR:", e)
+        return None
+
 
 # -------------------------------------------------
 # REGISTER FACE
@@ -51,7 +57,8 @@ async def register_face(
     image: UploadFile = File(...)
 ):
     print("🔥 /face/register CALLED")
-    print("🔥 Writing face vector for", admission_no)
+    print("🔥 Writing face vector for:", admission_no)
+
     db = get_db()
 
     # -------------------------------------------------
@@ -77,7 +84,6 @@ async def register_face(
     contents = await image.read()
     print("📸 IMAGE SIZE:", len(contents))
 
-
     if not contents:
         raise HTTPException(status_code=400, detail="Empty image file")
 
@@ -95,7 +101,7 @@ async def register_face(
 
     rgb_img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
-    # 🔥 Resize to speed up recognition
+    # Resize for performance
     h, w, _ = rgb_img.shape
     if w > 800:
         scale = 800 / w
@@ -105,21 +111,18 @@ async def register_face(
         )
 
     # -------------------------------------------------
-    # 3. FACE PROCESSING (NON-BLOCKING)
+    # 3. FACE PROCESSING (ASYNC SAFE)
     # -------------------------------------------------
-    try:
-        loop = asyncio.get_event_loop()
-        face_vector = await loop.run_in_executor(
-            None,
-            partial(extract_face_vector, rgb_img)
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        print("❌ FACE ERROR:", e)
+    loop = asyncio.get_event_loop()
+    face_vector = await loop.run_in_executor(
+        None,
+        partial(extract_face_vector, rgb_img)
+    )
+
+    if face_vector is None:
         raise HTTPException(
-            status_code=500,
-            detail="Face processing failed"
+            status_code=400,
+            detail="Face not detected clearly. Try again."
         )
 
     # -------------------------------------------------
@@ -131,6 +134,8 @@ async def register_face(
         "vector": face_vector,
         "updatedAt": firestore.SERVER_TIMESTAMP
     })
+
+    print("✅ FACE VECTOR STORED IN FIRESTORE")
 
     # -------------------------------------------------
     # 5. UPDATE STUDENT STATUS
