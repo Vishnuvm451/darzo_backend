@@ -1,7 +1,9 @@
 FROM python:3.10-slim
 
-# System deps for face-recognition (NO build tools)
+# System deps for OpenCV + dlib
 RUN apt-get update && apt-get install -y \
+    build-essential \
+    cmake \
     libgl1 \
     libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
