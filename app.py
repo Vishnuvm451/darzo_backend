@@ -6,26 +6,25 @@ from firebase import init_firebase
 from face_register import router as face_register_router
 from face_verify import router as face_verify_router
 
+print("🔥🔥🔥 RUNNING NEW BACKEND CODE v1.2.1 🔥🔥🔥")
+
 # -------------------------------------------------
-# LIFESPAN (STARTUP / SHUTDOWN)
+# LIFESPAN
 # -------------------------------------------------
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup
-    init_firebase()
-    print("🔥 Firebase initialized")
+    init_firebase()  # 🔥 ONLY ONCE
+    print("🔥 Firebase initialized (lifespan)")
     yield
-    # Shutdown (optional cleanup)
     print("🛑 API shutting down")
-print("🔥🔥🔥 RUNNING NEW BACKEND CODE v1.2.0 🔥🔥🔥")
 
 # -------------------------------------------------
-# APP INIT
+# APP
 # -------------------------------------------------
 app = FastAPI(
     title="DARZO Face Recognition API",
     description="Backend for Flutter Smart Attendance System",
-    version="1.2.0",
+    version="1.2.1",
     lifespan=lifespan
 )
 
@@ -34,36 +33,32 @@ app = FastAPI(
 # -------------------------------------------------
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # tighten later for production
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # -------------------------------------------------
-# ROUTES
+# ROUTERS
 # -------------------------------------------------
-app.include_router(face_register_router, prefix="/face")
-app.include_router(face_verify_router, prefix="/face")
+app.include_router(face_register_router, prefix="/face", tags=["Face Register"])
+app.include_router(face_verify_router, prefix="/face", tags=["Face Verify"])
 
 # -------------------------------------------------
 # ROOT
 # -------------------------------------------------
-#test
 @app.get("/", tags=["Health"])
 def root():
     return {
         "status": "online",
-        "service": "DARZO Biometric API 2",
-        "version": "1.2.0 - new"
+        "service": "DARZO Biometric API",
+        "version": "1.2.1"
     }
 
 # -------------------------------------------------
-# HEALTH CHECK (IMPORTANT FOR RENDER + FLUTTER)
+# HEALTH
 # -------------------------------------------------
 @app.get("/health", tags=["Health"])
 def health():
-    return {
-        "status": "ok",
-        "message": "API is healthy"
-    }
+    return {"status": "ok"}

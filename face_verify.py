@@ -2,98 +2,98 @@ from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 import numpy as np
 import cv2
 import asyncio
-from functools import partial
 
 from face_utils import extract_face_encoding, verify_user_face
 
 router = APIRouter(tags=["Face Verification"])
 
-MAX_IMAGE_SIZE = 2 * 1024 * 1024  # 2MB safety limit
+MAX_IMAGE_SIZE = 2 * 1024 * 1024  # 2MB
 
 # -------------------------------------------------
 # VERIFY FACE (1:1 MATCHING)
 # -------------------------------------------------
 @router.post("/verify")
 async def verify_face(
-    admission_no: str = Form(...),   # ✅ received from Flutter
+    admission_no: str = Form(...),
     image: UploadFile = File(...)
 ):
     """
-    Verifies a student's face using 1:1 comparison.
+    Verifies a student's face using stored vector (1:1).
+    Used during attendance marking.
     """
 
-    try:
-        # --------------------------------------------------
-        # 1. READ IMAGE
-        # --------------------------------------------------
-        contents = await image.read()
+    print("🔍 /face/verify CALLED:", admission_no)
 
-        if not contents:
-            raise HTTPException(status_code=400, detail="Empty image file")
+    # --------------------------------------------------
+    # 1. READ IMAGE
+    # --------------------------------------------------
+    contents = await image.read()
 
-        if len(contents) > MAX_IMAGE_SIZE:
-            raise HTTPException(
-                status_code=413,
-                detail="Image too large"
-            )
+    if not contents:
+        raise HTTPException(status_code=400, detail="Empty image file")
 
-        np_arr = np.frombuffer(contents, np.uint8)
-        img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+    print("📸 IMAGE SIZE:", len(contents))
 
-        if img is None:
-            raise HTTPException(
-                status_code=400,
-                detail="Invalid image format"
-            )
-
-        # Resize for speed (VERY IMPORTANT on Render)
-        h, w, _ = img.shape
-        if w > 800:
-            scale = 800 / w
-            img = cv2.resize(img, (int(w * scale), int(h * scale)))
-
-        # --------------------------------------------------
-        # 2. EXTRACT FACE ENCODING (NON-BLOCKING)
-        # --------------------------------------------------
-        loop = asyncio.get_event_loop()
-        encoding = await loop.run_in_executor(
-            None,
-            partial(extract_face_encoding, img)
+    if len(contents) > MAX_IMAGE_SIZE:
+        raise HTTPException(
+            status_code=413,
+            detail="Image too large"
         )
 
-        if encoding is None:
-            raise HTTPException(
-                status_code=400,
-                detail="No face detected or image too blurry"
-            )
+    img = cv2.imdecode(np.frombuffer(contents, np.uint8), cv2.IMREAD_COLOR)
 
-        # --------------------------------------------------
-        # 3. VERIFY AGAINST STORED VECTOR (1:1)
-        # --------------------------------------------------
-        success, message = verify_user_face(admission_no, encoding)
+    if img is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid image format"
+        )
 
-        if not success:
-            raise HTTPException(
-                status_code=401,
-                detail=message
-            )
+    # Resize for performance (Render-safe)
+    h, w, _ = img.shape
+    if w > 800:
+        scale = 800 / w
+        img = cv2.resize(img, (int(w * scale), int(h * scale)))
 
-        # --------------------------------------------------
-        # 4. SUCCESS
-        # --------------------------------------------------
-        return {
-            "success": True,
-            "admissionNo": admission_no,
-            "message": "Face verified successfully"
-        }
-
-    except HTTPException:
-        # Let FastAPI return clean error responses
-        raise
-
+    # --------------------------------------------------
+    # 2. EXTRACT FACE ENCODING (SAFE THREAD)
+    # --------------------------------------------------
+    try:
+        encoding = await asyncio.to_thread(extract_face_encoding, img)
     except Exception as e:
-        print("❌ CRITICAL ERROR IN /face/verify:", e)
+        print("❌ FACE ENCODING ERROR:", e)
         raise HTTPException(
             status_code=500,
-            detail="Internal server error during verification"
+            detail="Face encoding failed"
         )
+
+    if encoding is None:
+        raise HTTPException(
+            status_code=400,
+            detail="No face detected or unclear image"
+        )
+
+    print("🧠 LIVE VECTOR EXTRACTED")
+
+    # --------------------------------------------------
+    # 3. VERIFY AGAINST STORED VECTOR
+    # --------------------------------------------------
+    success, message = verify_user_face(admission_no, encoding)
+
+    print("🔐 VERIFY RESULT:", success, "|", message)
+
+    if not success:
+        raise HTTPException(
+            status_code=401,
+            detail=message
+        )
+
+    # --------------------------------------------------
+    # 4. SUCCESS
+    # --------------------------------------------------
+    print("✅ FACE VERIFIED:", admission_no)
+
+    return {
+        "success": True,
+        "admissionNo": admission_no,
+        "message": "Face verified successfully"
+    }
