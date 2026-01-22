@@ -1,8 +1,4 @@
-FROM vrndv/darzo-apii:latest
-
-WORKDIR /app
-
-COPY . .
+FROM vishnuvm451/darzo-backend:v1
 
 EXPOSE 8000
 
