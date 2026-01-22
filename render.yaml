@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: darzo-face-api
+    env: docker
+    dockerfilePath: ./Dockerfile
+    plan: free  # or starter/standard depending on your needs
+    healthCheckPath: /
+    envVars:
+      - key: FIREBASE_CONFIG
+        sync: false  # Set this in Render dashboard
+      - key: PORT
+        value: 8000
+    autoDeploy: true
