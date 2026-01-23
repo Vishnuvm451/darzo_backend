@@ -72,7 +72,8 @@ def init_firebase():
         logger.info("✅ Firebase app initialized")
 
         db = firestore.client()
-        logger.info("✅ Firestore client created")
+        logger.info(f"🔥 Firestore project connected: {db._client.project}")
+
 
         # -------------------------------------------------
         # VERIFY CONNECTION
