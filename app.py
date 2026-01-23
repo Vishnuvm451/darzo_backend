@@ -1,5 +1,6 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 import logging
 
@@ -70,15 +71,40 @@ def health():
         "message": "API is healthy and ready"
     }
 
+# ========== HTTP EXCEPTION HANDLER ==========
+# ✅ FIX: Proper HTTPException handling for validation errors
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request, exc):
+    logger.warning(f"⚠️ HTTP {exc.status_code}: {exc.detail}")
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "success": False,
+            "error": exc.detail,
+            "status_code": exc.status_code
+        }
+    )
+
 # ========== GLOBAL EXCEPTION HANDLER ==========
+# ✅ FIX: Improved global exception handler
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
     logger.error(f"❌ Unhandled exception: {str(exc)}", exc_info=True)
-    return {
-        "error": "Internal server error",
-        "detail": str(exc) if str(exc) else "Unknown error"
-    }
+    return JSONResponse(
+        status_code=500,
+        content={
+            "success": False,
+            "error": "Internal server error",
+            "detail": str(exc) if str(exc) else "Unknown error"
+        }
+    )
 
 # ========== RUN ==========
-# uvicorn app:app --host 0.0.0.0 --port 8000 --reload
-# For production: gunicorn -w 4 -b 0.0.0.0:8000 app:app
+# Development:
+#   uvicorn app:app --host 0.0.0.0 --port 8000 --reload
+#
+# Production (Docker):
+#   uvicorn app:app --host 0.0.0.0 --port 8000 --workers 2
+#
+# Alternative Production (Gunicorn):
+#   gunicorn -w 4 -b 0.0.0.0:8000 "app:app"
