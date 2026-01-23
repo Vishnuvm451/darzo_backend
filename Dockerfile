@@ -1,6 +1,5 @@
 FROM python:3.10-slim
 
-# Environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
@@ -8,7 +7,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# Install system dependencies (single RUN to reduce layers)
+# System deps for dlib + opencv
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     cmake \
@@ -18,22 +17,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxext6 \
     libxrender-dev \
     libgomp1 \
-    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements FIRST (for better layer caching)
+# Install Python deps first
 COPY requirements.txt .
-
-# Install Python dependencies
 RUN pip install --upgrade pip setuptools wheel && \
     pip install -r requirements.txt
 
-# Copy app code (changes here won't rebuild dependencies)
+# Copy app code
 COPY . .
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import requests; requests.get('http://localhost:8000/health', timeout=5)" || exit 1
-
-# Run app
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
+# 🚨 SINGLE WORKER ONLY (MANDATORY)
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]

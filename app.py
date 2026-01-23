@@ -104,7 +104,5 @@ async def global_exception_handler(request, exc):
 #   uvicorn app:app --host 0.0.0.0 --port 8000 --reload
 #
 # Production (Docker):
-#   uvicorn app:app --host 0.0.0.0 --port 8000 --workers 2
+#   uvicorn app:app --host 0.0.0.0 --port 8000 
 #
-# Alternative Production (Gunicorn):
-#   gunicorn -w 4 -b 0.0.0.0:8000 "app:app"
