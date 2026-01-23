@@ -20,6 +20,3 @@ node_modules
 README.md
 .pytest_cache
 .coverage
-serviceAccountKey.json
-*.pem
-*.key
