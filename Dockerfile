@@ -26,6 +26,6 @@ RUN pip install --upgrade pip setuptools wheel && \
 
 # Copy app code
 COPY . .
-
+COPY serviceAccountKey.json .
 # 🚨 SINGLE WORKER ONLY (MANDATORY)
 CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
