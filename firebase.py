@@ -1,7 +1,6 @@
 import firebase_admin
 from firebase_admin import credentials, firestore
 import os
-import json
 import logging
 
 logger = logging.getLogger(__name__)
@@ -9,107 +8,98 @@ logger = logging.getLogger(__name__)
 # ========== GLOBAL DB OBJECT ==========
 db = None
 
+
 # ========== INIT FIREBASE ==========
 def init_firebase():
     """
     ✅ Initializes Firebase app and Firestore client.
-    Supports both environment variable (Render) and local file (development).
-    
-    Environment Variable:
-    - FIREBASE_CREDENTIALS: JSON string of service account key
-    
-    Local File (Development):
-    - serviceAccountKey.json (in project root)
-    
-    Raises:
-    - RuntimeError: If Firebase initialization fails
+    ✅ Works on Render (env vars) and Local (serviceAccountKey.json)
     """
+
     global db
 
-    # ========== CHECK IF ALREADY INITIALIZED ==========
+    # -------------------------------------------------
+    # ALREADY INITIALIZED
+    # -------------------------------------------------
     if firebase_admin._apps:
-        logger.info("ℹ️ Firebase already initialized, reusing existing app")
+        logger.info("ℹ️ Firebase already initialized")
         db = firestore.client()
         return
 
-    logger.info("📱 Starting Firebase initialization...")
+    logger.info("🔥 Initializing Firebase Admin SDK...")
 
     try:
-        # ========== TRY ENVIRONMENT VARIABLE (RENDER) ==========
-        creds_json = os.getenv("FIREBASE_CREDENTIALS")
-        
-        if creds_json:
-            logger.info("✅ Using Firebase credentials from environment variable (RENDER)")
-            try:
-                cred_dict = json.loads(creds_json)
-                cred = credentials.Certificate(cred_dict)
-            except json.JSONDecodeError as e:
-                logger.error(f"❌ Invalid JSON in FIREBASE_CREDENTIALS: {str(e)}")
-                raise RuntimeError(f"Invalid Firebase credentials JSON: {str(e)}")
-        
-        # ========== FALLBACK TO LOCAL FILE (DEVELOPMENT) ==========
+        # -------------------------------------------------
+        # RENDER / PRODUCTION (ENV VARS)
+        # -------------------------------------------------
+        project_id = os.getenv("FIREBASE_PROJECT_ID")
+        client_email = os.getenv("FIREBASE_CLIENT_EMAIL")
+        private_key = os.getenv("FIREBASE_PRIVATE_KEY")
+
+        if project_id and client_email and private_key:
+            logger.info("✅ Using Firebase credentials from environment variables (Render)")
+
+            # 🔥 VERY IMPORTANT: fix escaped newlines
+            private_key = private_key.replace("\\n", "\n")
+
+            cred = credentials.Certificate({
+                "type": "service_account",
+                "project_id": project_id,
+                "client_email": client_email,
+                "private_key": private_key,
+                "token_uri": "https://oauth2.googleapis.com/token"
+            })
+
+        # -------------------------------------------------
+        # LOCAL DEVELOPMENT (JSON FILE)
+        # -------------------------------------------------
         else:
             cred_path = "serviceAccountKey.json"
-            
+
             if not os.path.exists(cred_path):
-                logger.error(f"❌ Credentials file not found: {cred_path}")
-                logger.error("   Set FIREBASE_CREDENTIALS environment variable or place serviceAccountKey.json in project root")
                 raise RuntimeError(
-                    f"Firebase credentials not found. "
-                    f"Either set FIREBASE_CREDENTIALS env variable or place {cred_path} in project root"
+                    "Firebase credentials not found.\n"
+                    "Set environment variables OR provide serviceAccountKey.json"
                 )
-            
-            logger.info(f"✅ Using Firebase credentials from file: {cred_path}")
+
+            logger.info("✅ Using Firebase credentials from local file")
             cred = credentials.Certificate(cred_path)
 
-        # ========== INITIALIZE FIREBASE APP ==========
+        # -------------------------------------------------
+        # INITIALIZE FIREBASE
+        # -------------------------------------------------
         firebase_admin.initialize_app(cred)
         logger.info("✅ Firebase app initialized")
 
-        # ========== GET FIRESTORE CLIENT ==========
         db = firestore.client()
         logger.info("✅ Firestore client created")
 
-        # ========== TEST CONNECTION ==========
+        # -------------------------------------------------
+        # VERIFY CONNECTION
+        # -------------------------------------------------
         try:
-            # Try to query a collection (non-blocking test)
             list(db.collection("_health_check").limit(1).stream())
-            logger.info("✅ Firestore connection verified - API is ready!")
+            logger.info(f"🔥 Firestore connected successfully")
         except Exception as e:
-            logger.warning(f"⚠️ Firestore connection test warning: {str(e)}")
-            # Don't fail here - Firestore might be accessible even if test fails
+            logger.warning(f"⚠️ Firestore test warning: {e}")
 
-    except RuntimeError:
-        raise
-    
     except Exception as e:
-        logger.error(f"❌ Critical error during Firebase initialization: {str(e)}", exc_info=True)
-        raise RuntimeError(f"Firebase initialization failed: {str(e)}") from e
+        logger.error("❌ Firebase initialization failed", exc_info=True)
+        raise RuntimeError(f"Firebase init failed: {str(e)}")
 
 
-# ========== GET DATABASE CLIENT ==========
+# ========== GET DB ==========
 def get_db():
-    """
-    ✅ Returns the Firestore client.
-    Auto-initializes if not already initialized.
-    
-    Returns:
-    - firestore.client(): Firestore database client
-    
-    Raises:
-    - RuntimeError: If Firebase initialization fails
-    """
     global db
-    
+
     if db is None:
-        logger.warning("⚠️ Firebase not initialized yet, calling init_firebase()...")
         init_firebase()
-    
+
     if db is None:
-        logger.error("❌ Failed to initialize Firebase database")
-        raise RuntimeError("Firebase database initialization failed")
-    
+        raise RuntimeError("Firestore DB not initialized")
+
     return db
+
 
 
 # ========== FIREBASE SCHEMA DOCUMENTATION ==========
