@@ -110,4 +110,3 @@ def get_db():
         raise RuntimeError("Firestore DB not initialized")
 
     return db
-
