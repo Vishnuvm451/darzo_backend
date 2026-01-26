@@ -15,7 +15,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-logger.info("🔥🔥🔥 STARTING DARZO BACKEND v1.2.2 🔥🔥🔥")
+logger.info("🔥🔥🔥 STARTING DARZO BACKEND v1.2.2 hell yeahh🔥🔥🔥")
 
 # ========== LIFESPAN ==========
 @asynccontextmanager
@@ -57,7 +57,7 @@ app.include_router(face_verify_router, prefix="/face", tags=["Face Verification"
 def root():
     return {
         "status": "online",
-        "service": "DARZO Biometric API",
+        "service": "DARZO Biometric API working",
         "version": "1.2.2",
         "docs": "/docs",
         "database": "Firebase Firestore"
@@ -68,7 +68,7 @@ def root():
 def health():
     return {
         "status": "ok",
-        "message": "API is healthy and ready"
+        "message": "API is healthy good"
     }
 
 # ========== HTTP EXCEPTION HANDLER ==========
